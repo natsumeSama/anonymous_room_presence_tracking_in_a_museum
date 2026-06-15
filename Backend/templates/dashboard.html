@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Museum Room Presence Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .rooms {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            width: 250px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        .count {
+            font-size: 60px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .events {
+            background: white;
+            margin: 40px auto;
+            padding: 20px;
+            max-width: 900px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #222;
+            color: white;
+            font-size: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Museum Room Presence Dashboard</h1>
+
+    <div class="rooms">
+        <div class="card">
+            <h2>Room A</h2>
+            <div id="roomA" class="count">0</div>
+            <p id="roomAUpdate">Last update: -</p>
+        </div>
+
+        <div class="card">
+            <h2>Room B</h2>
+            <div id="roomB" class="count">0</div>
+            <p id="roomBUpdate">Last update: -</p>
+        </div>
+    </div>
+
+    <button onclick="resetCounts()">Reset counts</button>
+
+    <div class="events">
+        <h2>Last Events</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Room</th>
+                    <th>Direction</th>
+                    <th>Sensor</th>
+                    <th>Count After</th>
+                </tr>
+            </thead>
+
+            <tbody id="eventsTable">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadState() {
+            const response = await fetch("/api/state");
+            const state = await response.json();
+
+            document.getElementById("roomA").textContent = state.room_A.count;
+            document.getElementById("roomB").textContent = state.room_B.count;
+
+            document.getElementById("roomAUpdate").textContent =
+                "Last update: " + (state.room_A.last_update || "-");
+
+            document.getElementById("roomBUpdate").textContent =
+                "Last update: " + (state.room_B.last_update || "-");
+        }
+
+        async function loadEvents() {
+            const response = await fetch("/api/events?limit=10");
+            const events = await response.json();
+
+            const table = document.getElementById("eventsTable");
+            table.innerHTML = "";
+
+            events.forEach(event => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${event.timestamp}</td>
+                    <td>${event.room}</td>
+                    <td>${event.direction}</td>
+                    <td>${event.sensor_id}</td>
+                    <td>${event.count_after}</td>
+                `;
+
+                table.appendChild(row);
+            });
+        }
+
+        async function resetCounts() {
+            await fetch("/api/reset", {
+                method: "POST"
+            });
+
+            loadState();
+            loadEvents();
+        }
+
+        async function refreshDashboard() {
+            await loadState();
+            await loadEvents();
+        }
+
+        refreshDashboard();
+        setInterval(refreshDashboard, 2000);
+    </script>
+</body>
+</html>
